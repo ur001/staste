@@ -1,4 +1,5 @@
 <html>
+  {% load staste_charts %}
   <head>
     <script type="text/javascript" src="https://www.google.com/jsapi"></script>
     <script type="text/javascript">
@@ -13,7 +14,7 @@
         data.addRows({{ axis.values|length }});
           {% for key, value in axis.values %}
           data.setValue({{ forloop.counter0 }}, 0, '{{ key|escapejs }}');
-          data.setValue({{ forloop.counter0 }}, 1, {{ value }});
+          data.setValue({{ forloop.counter0 }}, 1, {{ value|dotted_number }});
           {% endfor %}
 
 
