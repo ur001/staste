@@ -18,7 +18,11 @@ class ResponseTimeMiddleware(object):
 
     def process_view(self, request, view_func, view_args, view_kwargs):
         module = view_func.__module__
-        func = view_func.__name__
+        try:
+            func = getattr(view_func, '__name__', view_func.__class__.__name__)
+        except AttributeError:
+            func = 'unknown'
+        
         request._staste_params['view'] = '%s.%s' % (module, func)
 
     def process_response(self, request, response):
