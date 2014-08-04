@@ -1,9 +1,26 @@
 Staste - slightly complicated event tracker for your Django website
 ===================================================================
 
-    pip install staste
+Staste-unique - ur001's fork with 'unique' support
+-------------------------------------------------------------------
+
+    from staste.metrica import Metrica
+    from staste.axis import Axis
+    metrica = Metrica(name='visitors_stat', axes=[])
+    metrica.kick(unique='user1')
+    metrica.kick(unique='user1')
+    metrica.kick(unique='user2')
+
+    >>> metrica.total()
+    3
+
+    >>> metrica.unique().total()
+    2
+
 
 ## Quick Start
+
+    pip install staste
 
 Say you want to track some event in *real time*, for example count your guests. And you want to count not only all of them, but have different counts by gender and age, and their combinations. Oh, and, of course, you don't want only static counts, you want a timeline.
 

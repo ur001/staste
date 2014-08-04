@@ -1,77 +1,96 @@
 <html>
-    {% load staste_charts %}
-    <head>
-        <script type="text/javascript" src="https://www.google.com/jsapi"></script>
-        <script type="text/javascript">
-            google.load("visualization", "1", {packages:["corechart"]});
-            google.setOnLoadCallback(drawChart);
-            function drawChart() {
-                var data = new google.visualization.DataTable();
-                    data.addColumn('string', '{{ axis.name|escapejs }}');
-                    
-                    {% for choice in axis.data.keys %}
-                        data.addColumn('number', '{{ choice|escapejs }}');  
-                    {% endfor %}
-             
-                    data.addRows({{ axis.data.values.0|length }});
-                    
-                    {% for timepoint in axis.data.values.0 %}
-                        data.setValue({{ forloop.counter0 }}, 0, {% if not clean_date %}'{{ timepoint.0|timesince }} ago'{% else %}'{{ timepoint.0 }}'{% endif %});
-                    {% endfor %}
-                                       
-                   {% for value in axis.data.values %}   
-                        {% for point in value %}
-                            data.setValue({{ forloop.counter0 }}, {{ forloop.parentloop.counter }}, {{ point.1 }});
-                        {% endfor %}                    
-                    {% endfor %}
-                    
-                    var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
-                    chart.draw(data, {width: document.width - 30, height: window.innerHeight - 60, title: '{{ axis.name|escapejs }}'});
-            }
-        </script>
-        
-        <style>
-              body { background-color: white; }
-              p { margin-left: 70px;font-size: 0.8em; float: left; }
-              p#scales {  margin-top: 17px;  }
-              p#axes { float: right; margin-right: 120px;}
-        </style>
-    </head>
+{% load staste_charts %}
+<head>
+    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+    <script type="text/javascript">
+        google.load("visualization", "1", {packages: ["corechart"]});
+        google.setOnLoadCallback(drawChart);
+        function drawChart() {
+            var data = new google.visualization.DataTable();
+            data.addColumn('string', '{{ axis.name|escapejs }}');
 
-    <body>  
-    
-        <div id="chart_div"></div>
-        <p id="scales">Scale: 
-            {% for scale in scales %}
-                {% if scale == current_scale %}
-                    <strong>
-                {% else %}
-                    <a href="?timescale={{ scale }}&show_axis={{ current_axis }}&{{ time_since_params }}">
-                {% endif %}
-                {{ scale }}
-                {% if scale == current_scale %}
-                    </strong>
-                {% else %}
-                    </a>
-                {% endif %}
-                {% if not forloop.last %} | {% endif %}
+            {% for choice in axis.data.keys %}
+                data.addColumn('number', '{{ choice|escapejs }}');
             {% endfor %}
-        </p>
-        <p id="axes">Axis: 
-            {% for a in axes %}
-                {% if a == current_axis %}
-                    <strong>
-                {% else %}
-                    <a href="?show_axis={{ a }}&timescale={{ current_scale }}&{{ time_since_params }}">
-                {% endif %}
-                {{ a }}
-                {% if a == current_axis %}
-                    </strong>
-                {% else %}
-                    </a>
-                {% endif %}
-                {% if not forloop.last %} | {% endif %}
+
+            data.addRows({{ axis.data.values.0|length }});
+
+            {% for timepoint in axis.data.values.0 %}
+                data.setValue({{ forloop.counter0 }}, 0, {% if not clean_date %}'{{ timepoint.0|timesince }} ago'
+                    {% else %}'{{ timepoint.0 }}'{% endif %});
             {% endfor %}
-        </p>
-    </body>
+
+            {% for value in axis.data.values %}
+                {% for point in value %}
+                    data.setValue({{ forloop.counter0 }}, {{ forloop.parentloop.counter }}, {{ point.1 }});
+                {% endfor %}
+            {% endfor %}
+
+            var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
+            chart.draw(data, {
+                width: document.width - 30,
+                height: window.innerHeight - 60,
+                title: '{{ axis.name|escapejs }}'
+            });
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: white;
+        }
+
+        p {
+            margin-left: 70px;
+            font-size: 0.8em;
+            float: left;
+        }
+
+        p#scales {
+            margin-top: 17px;
+        }
+
+        p#axes {
+            float: right;
+            margin-right: 120px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="chart_div"></div>
+    <p id="scales">Scale:
+        {% for scale in scales %}
+            {% if scale == current_scale %}
+                <strong>
+            {% else %}
+                <a href="?timescale={{ scale }}&show_axis={{ current_axis }}&{{ time_since_params }}">
+            {% endif %}
+        {{ scale }}
+        {% if scale == current_scale %}
+            </strong>
+        {% else %}
+            </a>
+        {% endif %}
+            {% if not forloop.last %} | {% endif %}
+        {% endfor %}
+    </p>
+
+    <p id="axes">Axis:
+        {% for a in axes %}
+            {% if a == current_axis %}
+                <strong>
+            {% else %}
+                <a href="?show_axis={{ a }}&timescale={{ current_scale }}&{{ time_since_params }}">
+            {% endif %}
+        {{ a }}
+        {% if a == current_axis %}
+            </strong>
+        {% else %}
+            </a>
+        {% endif %}
+            {% if not forloop.last %} | {% endif %}
+        {% endfor %}
+    </p>
+</body>
 </html>

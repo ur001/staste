@@ -1,4 +1,5 @@
 .vagrant
+.idea
 dist/
 build/
 staste.egg-info/

@@ -9,4 +9,3 @@ def dotted_number(number):
     if type(number) == float:
         number = format(number, '.', 6)
     return number
-    
