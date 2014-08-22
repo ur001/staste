@@ -1,3 +1,4 @@
+# coding: utf-8
 import datetime
 
 from django.test import TestCase
@@ -5,7 +6,7 @@ from django.conf import settings
 
 from staste import redis
 from staste.metrica import Metrica, AveragedMetrica
-from staste.axis import Axis, StoredChoiceAxis
+from staste.axis import Axis, StoredChoiceAxis, HierarchicalAxis
 
 
 def dtt(*args, **kwargs):
@@ -131,7 +132,6 @@ class TestStatsApi(TestCase):
         genders = set(metrica.timespan().iterate('gender'))
         self.assertEquals(genders, set([('girl', 8), ('boy', 28)]))
 
-        
 
     def testMultipleAndStrangeAxis(self):
         # I'm eighteen, and I don't want problems with laws
@@ -327,3 +327,37 @@ class TestStatsApi(TestCase):
 
         years = list(metrica.unique().timespan().iterate())
         self.assertEquals(years, [(2106, 20)])
+
+    def test_hierarchical_axis(self):
+        metrica = Metrica(name='hierarchi-test', axes=[
+            ('action', Axis()),
+            ('label', HierarchicalAxis()),
+            ('id', Axis(value_type=int)),
+        ])
+
+        user1, user2 = 'ur001', 'other user'
+        id1, id2 = 1, 2
+
+        metrica.kick(action='impression', label=('exp', 'city', 'all', 1), id=id1, unique=user1)
+        metrica.kick(action='impression', label=('exp', 'city', 'all', 1), id=id1, unique=user1)
+
+        metrica.kick(action='impression', label=('exp', 'city', 'tag', 1, 1), id=id1, unique=user1)
+        metrica.kick(action='impression', label=('exp', 'city', 'tag', 1, 2), id=id1, unique=user2)
+
+        metrica.kick(action='pageview', label=('out', 'se', 'google', u'Экскурсия'), id=id1, unique=user1)
+        metrica.kick(action='pageview', label=('out', 'se', 'google', u'Москва'), id=id2, unique=user2)
+
+        metrica.kick(action='pageview', label=('out', 'link', 'tripster.ru'), id=id1, unique=user1)
+        metrica.kick(action='pageview', label=('out', 'link', 'sociation.org'), id=id2, unique=user2)
+
+        self.assertEqual(metrica.values().total(), 8)
+        self.assertEqual(metrica.unique().total(), 7)
+        self.assertEqual(metrica.filter(label=None).total(), 8)
+        self.assertEqual(metrica.filter(label=('exp', 'city')).total(), 4)
+        self.assertEqual(metrica.filter(label=('exp', 'city'), unique=True).total(), 3)
+        self.assertEqual(metrica.filter(id=id1, label=('out', 'se', 'google')).total(), 1)
+        self.assertEqual(metrica.filter(id=id2, label=('out', 'se', 'google', u'Москва')).total(), 1)
+        self.assertEqual(
+            metrica.filter(id=id1, label=('exp', 'city'), unique=True).iterate('label'),
+            [(('exp', 'city', 'all'), 1), (('exp', 'city', 'tag'), 2)]
+        )

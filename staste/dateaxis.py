@@ -6,7 +6,7 @@ import datetime
 import calendar
 from dateutil import rrule
 from collections import namedtuple
-from staste import redis
+from staste import redis, ALL
 
 
 def days_to_seconds(days):
@@ -67,7 +67,7 @@ class DateAxis(object):
     
     def scales(self, date):
         """Yields DateScale objects for all scales on which the event should be stored"""
-        yield DateScale('__all__', 0, '', False)
+        yield DateScale(ALL, 0, '', False)
 
         id_parts = []
         for scale, scale_expiration in DATE_SCALES_AND_EXPIRATIONS:
@@ -87,7 +87,7 @@ class DateAxis(object):
         A timespan is a dict of date scales
         """
         if not timespan:
-            return '__all__'
+            return ALL
 
         return ':'.join(self._timespan_to_id_parts(**timespan))
 

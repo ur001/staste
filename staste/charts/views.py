@@ -22,11 +22,7 @@ class Chart(TemplateView):
         return vs
 
     def get_metrica_values(self):
-        vs = self.metrica.values()
-
-        vs = self.timespan(vs)
-
-        return vs
+        return self.timespan(self.metrica.values())
 
 
 class PieChart(Chart):
@@ -36,10 +32,10 @@ class PieChart(Chart):
     def get_context_data(self):
         values = self.get_metrica_values().iterate(self.axis_keyword)
 
-        axis_data = {'name': self.axis_keyword,
-                     'values': list(values)}
-
-        return {'axis': axis_data}
+        return {
+            'name': self.axis_keyword,
+            'values': list(values)
+        }
 
 
 class TimelineChart(Chart):
@@ -48,34 +44,37 @@ class TimelineChart(Chart):
     def get_context_data(self):
         values = self.get_metrica_values().iterate()
 
-        axis_data = {'name': 'Timeline',
-                     'values': list(values)}
-
-        return {'axis': axis_data}
+        return {
+            'name': 'Timeline',
+            'values': list(values)
+        }
 
 
 class TimeserieChart(Chart):
     """
     Shows the current metric's chosen axis in the context of the specified time period (from somewhen back untill now).
+
     Defining view's class parameters:
-        TimeserieChart.metrica                            - an instance of staste.metrica.Metrica class - 
-                                             specifies the metric the view is dealing with;
-        TimeserieChart.template_name                      - specifies the template the output would be rendered with.
+        TimeserieChart.metrica - an instance of staste.metrica.Metrica class -
+            specifies the metric the view is dealing with;
+
+        TimeserieChart.template_name - specifies the template the output would be rendered with.
+
     Context:
-       {{ axis.name }}                         - the name of presented axis (described below);
-       {{ axis.data }}                         - a dict, where keys are current axis' possible choices and values are lists of tuples
-                                             of time-marked results
-                                             (e.g. {
-                                                    'male':   [
-                                                                (datetime.datetime(2007, 1, 2, 3, 4, 5), 12),
-                                                                (datetime.datetime(2007, 1, 2, 4, 4, 5), 7),
-                                                              ],
-                                                    'female': [
-                                                                (datetime.datetime(2007, 1, 2, 3, 4, 5), 9),
-                                                                (datetime.datetime(2007, 1, 2, 4, 4, 5), 21),
-                                                              ],
-                                                    }
-                                             );
+        {{ axis.name }} - the name of presented axis (described below);
+        {{ axis.data }} - a dict, where keys are current axis' possible choices and values
+            are lists of tuples of time-marked results:
+                {
+                    'male': [
+                        (datetime.datetime(2007, 1, 2, 3, 4, 5), 12),
+                        (datetime.datetime(2007, 1, 2, 4, 4, 5), 7),
+                    ],
+                    'female': [
+                        (datetime.datetime(2007, 1, 2, 3, 4, 5), 9),
+                        (datetime.datetime(2007, 1, 2, 4, 4, 5), 21),
+                    ],
+                }
+
     Accepts GET-parameters:
         'show_axis'                        - specifies the metric's axis to present (e.g. '?show_axis=gender'.);
                                              default = current metric's first axis;
@@ -101,19 +100,16 @@ class TimeserieChart(Chart):
 
     def get_context_data(self):
         axis_displayed = self.get_axis_displayed()
-
         values = self.get_timeserie(axis_displayed)
 
-        clean_date = self.request.GET.get('clean_date', False) != False
-
-        axis_data = {'name': 'Timeline: %s statistic.' % axis_displayed,
-                     'data': values, }
-
         return {
-            'axis': axis_data,
+            'axis': {
+                'name': 'Timeline: %s statistic.' % axis_displayed,
+                'data': values,
+            },
             'axes': dict(self.metrica.axes).keys(),
             'current_axis': axis_displayed,
-            'clean_date': clean_date,
+            'clean_date': self.request.GET.get('clean_date', False) is not False,
             'scales': TIMESCALES,
             'current_scale': self.timescale,
             'time_since_params': '&'.join(['%s__ago=%i' % (k[:-1], v) for k, v in self.time_since_kwargs.items()]),
@@ -145,6 +141,7 @@ class TimeserieChart(Chart):
         time_until = datetime.datetime.now()
         self.timescale = self.get_timescale()
         self.time_since_kwargs = self.get_time_since_kwargs()
+
         timeserie_params = {
             'since': time_until - datetime.timedelta(**self.time_since_kwargs),
             'until': time_until,
@@ -152,12 +149,13 @@ class TimeserieChart(Chart):
         }
 
         values = {}
+
         if not self.request.GET.get('hide_total', False):
-            values.update({'total': self.get_metrica_values().timeserie(**timeserie_params)})
+            values['total'] = self.get_metrica_values().timeserie(**timeserie_params)
+
         for item in self.metrica.choices(axis_displayed):
-            values.update({item: self.get_metrica_values() \
-                .filter(**{axis_displayed: item}) \
-                .timeserie(**timeserie_params)})
+            values[item] = self.get_metrica_values().filter(**{axis_displayed: item}).timeserie(**timeserie_params)
+
         return values
 
 
@@ -177,7 +175,6 @@ class LatestCountAndAverageChart(Chart):
     }
 
     def get_context_data(self):
-
         # parameters
         scale = self.request.GET.get('scale')
         if scale not in self.scales:
@@ -197,10 +194,12 @@ class LatestCountAndAverageChart(Chart):
 
         since = datetime.datetime.now() - self.scale_deltas[scale]
         data = list(vs.timeserie_counts_and_averages(since, datetime.datetime.now(), scale=scale))
-        return {'title': self.title,
-                'axis': {'data': data},
-                'scales': self.scales,
-                'current_scale': scale,
-                'views': views,
-                'current_view': view
+
+        return {
+            'title': self.title,
+            'axis': {'data': data},
+            'scales': self.scales,
+            'current_scale': scale,
+            'views': views,
+            'current_view': view
         }
