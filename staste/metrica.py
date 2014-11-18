@@ -1,9 +1,10 @@
+# coding: utf-8
 import datetime
 import itertools
 
 from django.conf import settings
 
-from staste import redis, UNIQUE, CHOICES
+from staste import redis, CHOICES
 from staste.dateaxis import DATE_AXIS
 
 
@@ -33,10 +34,6 @@ class MetricaValues(object):
     def filter(self, **kwargs):
         fl = dict(self._filter, **kwargs)
         return self.__class__(self.metrica, timespan=self._timespan, filter=fl)
-
-    def unique(self, is_unique=True):
-        """Adds unique filter"""
-        return self.filter(unique=is_unique)
 
     # GETTING VALUES
     def total(self):
@@ -114,13 +111,14 @@ class Metrica(object):
     """
     values_class = MetricaValues
 
-    def __init__(self, name, axes, multiplier=None):
+    def __init__(self, name, axes, multiplier=None, date_scales=None):
         """
         Constructor of a Metrica
 
         name - should be a unique (among your metrics) string, it will be used in Redis identifiers (lots of them)
         axes - a list/iterable of tuples: (keyword, staste.axes.Axis object). can be empty
         multiplier - you can multiply all values you provide.
+        date_scales — list/tuple of allowed date scales. default: ('year', 'month', 'day', 'hour', 'minute')
         it's useful since Redis does not understand floating point increments.
         (all totals() will be divided back by this)
         """
@@ -128,12 +126,11 @@ class Metrica(object):
         self.axes = list(axes)
         self.date_axis = DATE_AXIS
         self.multiplier = float(multiplier) if multiplier else 1
-        # don't produce float output in the simple case
+        self.date_scales = date_scales or DATE_AXIS.default_scales
 
-    def kick(self, value=1, date=None, unique=None, **kwargs):
+    def kick(self, value=1, date=None, **kwargs):
         """
         Registers an event with parameters (for each of axis)
-        unique - key for event unique (session_id, user_id , etc.)
         """
         date = date or datetime.datetime.now()
         value = int(self.multiplier * value)
@@ -142,7 +139,6 @@ class Metrica(object):
 
         choices_sets_to_append = []
         hash_field_id_parts = []
-        unique_hash_field_id = self.hash_field_id(**kwargs)  # build field hash for unique check
 
         for axis_kw, axis in self.axes:
             param_value = kwargs.pop(axis_kw, None)
@@ -155,7 +151,7 @@ class Metrica(object):
                 for key_postfix, choice in axis.choices_from_value(param_value):
                     choice_key_parts = (CHOICES, axis_kw, key_postfix) if key_postfix else (CHOICES, axis_kw)
                     choices_sets_to_append.append((u':'.join(choice_key_parts), choice))
-                    
+
         if kwargs:
             raise TypeError("Invalid kwargs left: %s" % kwargs)
 
@@ -164,15 +160,12 @@ class Metrica(object):
         # Here we go: bumping all counters out there
         pipe = redis.pipeline(transaction=False)
 
-        for date_scale in self.date_axis.scales(date):
+        for date_scale in self.date_axis.scales(date, self.date_scales):
             hash_key = u'%s:%s' % (hash_key_prefix, date_scale.id)
-            # Register event with given kwargs and determine is it unique
-            is_unique = self.register_unique(hash_key, unique_hash_field_id, unique) if unique else False
-            
+
             for parts in itertools.product(*hash_field_id_parts):
                 hash_field_id = u':'.join(parts)
-
-                self._increment(pipe, hash_key, hash_field_id, value, is_unique=is_unique)
+                self._increment(pipe, hash_key, hash_field_id, value)
             
             if date_scale.expiration:
                 pipe.expire(hash_key, date_scale.expiration)
@@ -211,8 +204,7 @@ class Metrica(object):
 
     def hash_field_id(self, **kwargs):
         hash_field_id_parts = []
-        is_unique = kwargs.pop('unique', False)
-        
+
         for axis_kw, axis in self.axes:
             hash_field_id_parts.append(
                 axis.get_field_main_id(kwargs.pop(axis_kw, None))
@@ -221,8 +213,7 @@ class Metrica(object):
         if kwargs:
             raise TypeError("Invalid kwargs left: %s" % kwargs)
 
-        hash_field_id = u':'.join(hash_field_id_parts)
-        return hash_field_id if not is_unique else self.unique_hash_field_id(hash_field_id)
+        return u':'.join(hash_field_id_parts)
 
     def get_axis(self, axis_kw):
         return dict(self.axes)[axis_kw]
@@ -230,23 +221,8 @@ class Metrica(object):
     def key_for_axis_choices(self, axis_kw):
         return u'%s:%s:%s' % (self.key_prefix(), CHOICES, axis_kw)
 
-    @staticmethod
-    def unique_hash_field_id(hash_field_id):
-        return u"{}:{}".format(hash_field_id, UNIQUE)
-
-    def register_unique(self, hash_key_prefix, hash_field_id, unique):
-        """
-        Register unique for given hash_key_prefix and hash_field_id
-        Return True if it the first hit, False otherwise
-        """
-        unique_key = u"{}:{}".format(hash_key_prefix, UNIQUE)
-        value = u"{}:{}".format(hash_field_id, unique)
-        return bool(redis.pfadd(unique_key, value))
-
-    def _increment(self, pipe, hash_key, hash_field_id, value, is_unique=False):
+    def _increment(self, pipe, hash_key, hash_field_id, value):
         pipe.hincrby(hash_key, hash_field_id, value)
-        if is_unique:
-            pipe.hincrby(hash_key, self.unique_hash_field_id(hash_field_id), value)
 
 
 class AveragedMetricaValues(MetricaValues):
@@ -306,9 +282,6 @@ class AveragedMetrica(Metrica):
     """
     values_class = AveragedMetricaValues
 
-    def _increment(self, pipe, hash_key, hash_field_id, value, is_unique=False):
-        """
-        WARNING: unique for AverageMetrica not supports now!
-        """
+    def _increment(self, pipe, hash_key, hash_field_id, value):
         super(AveragedMetrica, self)._increment(pipe, hash_key, hash_field_id, value)
         pipe.hincrby(u'%s:__len__' % hash_key, hash_field_id, 1)

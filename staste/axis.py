@@ -65,7 +65,6 @@ class HierarchicalAxis(Axis):
 
         metrica.kick(place=('experience',), event='pageview', id=experience_id)
 
-
         metrica.filter(path=('city'), event='impression').total()
         metrica.filter(path=('city', city_id), event='impression').total()
         metrica.filter(path=('city_tag'), event='impression').total()
@@ -76,7 +75,7 @@ class HierarchicalAxis(Axis):
         super(HierarchicalAxis, self).__init__(value_type=tuple)
 
     def value_to_string(self, value):
-        if isinstance(value, tuple):
+        if isinstance(value, (list, tuple)):
             return u'/'.join(map(unicode, value))
         else:
             return unicode(value)

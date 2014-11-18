@@ -64,13 +64,21 @@ DateScale = namedtuple('DateScale', ['id', 'expiration', 'value', 'store'])
 
 class DateAxis(object):
     """This is a special-cased axis of DateTime"""
+    default_scales = ('year', 'month', 'day', 'hour', 'minute')
     
-    def scales(self, date):
-        """Yields DateScale objects for all scales on which the event should be stored"""
+    def scales(self, date, allowed_scales=None):
+        """
+        Yields DateScale objects for all scales on which the event should be stored
+        date_scales: allowed date scales {'hour': False, 'minute': False}
+        """
+        allowed_scales = allowed_scales or self.default_scales
         yield DateScale(ALL, 0, '', False)
 
         id_parts = []
         for scale, scale_expiration in DATE_SCALES_AND_EXPIRATIONS:
+            if scale not in allowed_scales:
+                continue
+
             value = getattr(date, scale)
             
             id_parts += self._datepart_format(scale, value)

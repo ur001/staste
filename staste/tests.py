@@ -269,65 +269,6 @@ class TestStatsApi(TestCase):
 
         print metrica.values().timeserie(dtt(2006, 1, 1), dtt(2011, 3, 1))
 
-    def testUnique(self):
-        metrica = Metrica(name='unique_visits', axes=[])
-
-        my_birthday = datetime.datetime(2106, 2, 7)  # my 114th birthday
-        day = datetime.timedelta(days=1)
-        month = datetime.timedelta(days=31)
-
-        yesterday = my_birthday - day
-        before_yesterday = yesterday - day
-
-        prev_month = my_birthday - month
-        prev_month_and_a_day_back = prev_month - day
-
-        metrica.kick(date=prev_month_and_a_day_back, unique='visitor_0')
-
-        for i in xrange(2):
-            metrica.kick(date=prev_month, unique='visitor_{}'.format(i))
-
-        for i in xrange(5):
-            metrica.kick(date=before_yesterday, unique='visitor_{}'.format(i))
-
-        for i in xrange(8):
-            metrica.kick(date=yesterday, unique='visitor_{}'.format(i))
-
-        for i in xrange(20):  # all my friends have come
-            metrica.kick(date=my_birthday, unique='visitor_{}'.format(i))
-
-        # TEST NON-UNIQUE
-        self.assertEquals(metrica.timespan(year=2106, month=1).total(), 3)
-        self.assertEquals(metrica.timespan(year=2106, month=2).total(), 33)
-        self.assertEquals(metrica.timespan(year=2106).timespan(month=2).total(), 33)
-        self.assertEquals(metrica.timespan(year=2106, month=3).total(), 0)
-        self.assertEquals(metrica.timespan(year=2106, month=2, day=7).total(), 20)
-        self.assertEquals(metrica.timespan(year=2106).total(), 36)
-        self.assertEquals(metrica.total(), 36)
-
-        # looks like that, and also an iterator
-        months = list(metrica.timespan(year=2106).iterate())[:3]
-        self.assertEquals(months, [(1, 3), (2, 33), (3, 0)])
-
-        years = list(metrica.timespan().iterate())
-        self.assertEquals(years, [(2106, 36)])
-
-        # TEST UNIQUE
-        self.assertEquals(metrica.unique().timespan(year=2106, month=1).total(), 2)
-        self.assertEquals(metrica.unique().timespan(year=2106, month=2).total(), 20)
-        self.assertEquals(metrica.unique().timespan(year=2106).timespan(month=2).total(), 20)
-        self.assertEquals(metrica.unique().timespan(year=2106, month=3).total(), 0)
-        self.assertEquals(metrica.unique().timespan(year=2106, month=2, day=7).total(), 20)
-        self.assertEquals(metrica.unique().timespan(year=2106).total(), 20)
-        self.assertEquals(metrica.unique().total(), 20)
-
-        # looks like that, and also an iterator
-        months = list(metrica.unique().timespan(year=2106).iterate())[:3]
-        self.assertEquals(months, [(1, 2), (2, 20), (3, 0)])
-
-        years = list(metrica.unique().timespan().iterate())
-        self.assertEquals(years, [(2106, 20)])
-
     def test_hierarchical_axis(self):
         metrica = Metrica(name='hierarchi-test', axes=[
             ('action', Axis()),
@@ -335,29 +276,26 @@ class TestStatsApi(TestCase):
             ('id', Axis(value_type=int)),
         ])
 
-        user1, user2 = 'ur001', 'other user'
         id1, id2 = 1, 2
 
-        metrica.kick(action='impression', label=('exp', 'city', 'all', 1), id=id1, unique=user1)
-        metrica.kick(action='impression', label=('exp', 'city', 'all', 1), id=id1, unique=user1)
+        metrica.kick(action='impression', label=('exp', 'city', 'all', 1), id=id1)
+        metrica.kick(action='impression', label=('exp', 'city', 'all', 1), id=id1)
 
-        metrica.kick(action='impression', label=('exp', 'city', 'tag', 1, 1), id=id1, unique=user1)
-        metrica.kick(action='impression', label=('exp', 'city', 'tag', 1, 2), id=id1, unique=user2)
+        metrica.kick(action='impression', label=('exp', 'city', 'tag', 1, 1), id=id1)
+        metrica.kick(action='impression', label=('exp', 'city', 'tag', 1, 2), id=id1)
 
-        metrica.kick(action='pageview', label=('out', 'se', 'google', u'Экскурсия'), id=id1, unique=user1)
-        metrica.kick(action='pageview', label=('out', 'se', 'google', u'Москва'), id=id2, unique=user2)
+        metrica.kick(action='pageview', label=('out', 'se', 'google', u'Экскурсия'), id=id1)
+        metrica.kick(action='pageview', label=('out', 'se', 'google', u'Москва'), id=id2)
 
-        metrica.kick(action='pageview', label=('out', 'link', 'tripster.ru'), id=id1, unique=user1)
-        metrica.kick(action='pageview', label=('out', 'link', 'sociation.org'), id=id2, unique=user2)
+        metrica.kick(action='pageview', label=('out', 'link', 'tripster.ru'), id=id1)
+        metrica.kick(action='pageview', label=('out', 'link', 'sociation.org'), id=id2)
 
         self.assertEqual(metrica.values().total(), 8)
-        self.assertEqual(metrica.unique().total(), 7)
         self.assertEqual(metrica.filter(label=None).total(), 8)
         self.assertEqual(metrica.filter(label=('exp', 'city')).total(), 4)
-        self.assertEqual(metrica.filter(label=('exp', 'city'), unique=True).total(), 3)
         self.assertEqual(metrica.filter(id=id1, label=('out', 'se', 'google')).total(), 1)
         self.assertEqual(metrica.filter(id=id2, label=('out', 'se', 'google', u'Москва')).total(), 1)
         self.assertEqual(
-            metrica.filter(id=id1, label=('exp', 'city'), unique=True).iterate('label'),
-            [(('exp', 'city', 'all'), 1), (('exp', 'city', 'tag'), 2)]
+            metrica.filter(id=id1, label=('exp', 'city')).iterate('label'),
+            [(('exp', 'city', 'all'), 2), (('exp', 'city', 'tag'), 2)]
         )

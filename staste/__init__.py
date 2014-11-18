@@ -8,5 +8,4 @@ if not getattr(settings, 'STASTE_METRICS_PREFIX', None):
 
 key_naming = getattr(settings, 'STASTE_KEY_NAMING', {})
 ALL = key_naming.get('all', '__all__')
-UNIQUE = key_naming.get('unique', '__unique__')
 CHOICES = key_naming.get('choices', '__choices__')
