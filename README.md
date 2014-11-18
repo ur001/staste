@@ -1,21 +1,9 @@
 Staste - slightly complicated event tracker for your Django website
 ===================================================================
 
-Staste-unique - ur001's fork with 'unique' support
+Staste ur001's fork
 -------------------------------------------------------------------
-
-    from staste.metrica import Metrica
-    from staste.axis import Axis
-    metrica = Metrica(name='visitors_stat', axes=[])
-    metrica.kick(unique='user1')
-    metrica.kick(unique='user1')
-    metrica.kick(unique='user2')
-
-    >>> metrica.total()
-    3
-
-    >>> metrica.unique().total()
-    2
+See [Wiki page][https://github.com/ur001/staste/wiki ] for details
 
 
 ## Quick Start
@@ -133,3 +121,4 @@ to your middleware classes. Counting requests and average time will start this v
 
 [1]: http://staste.unfoldthat.com/
 [2]: http://projecteuler.net/
+[3]: https://github.com/ur001/staste/wiki
