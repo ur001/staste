@@ -3,7 +3,7 @@ Staste - slightly complicated event tracker for your Django website
 
 Staste ur001's fork
 -------------------------------------------------------------------
-See [Wiki page][https://github.com/ur001/staste/wiki ] for details
+See [Wiki page][3] for details
 
 
 ## Quick Start
